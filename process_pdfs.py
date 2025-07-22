@@ -73,5 +73,6 @@ def process_all():
             json.dump(result, f, indent=2)
         print(f"✅ Processed: {file.name}")
 
+
 if __name__ == "__main__":
     process_all()
