@@ -56,6 +56,7 @@ For each `.pdf` file inside the `sample_dataset/pdfs/` folder, the app:
 
 ```bash
 docker build --platform linux/amd64 -t adobe-hackathon-round1a:v1 .
+```
 
 ```bash
 docker run --rm -it \
@@ -64,5 +65,6 @@ docker run --rm -it \
   -v "$(pwd)/output:/app/output" \
   --network none \
   adobe-hackathon-round1a:v1
+```
 
   
