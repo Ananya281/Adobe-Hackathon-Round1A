@@ -63,8 +63,10 @@ def extract_headings(pdf_path):
     }
 
 def process_all():
-    input_dir = Path("/app/input")
-    output_dir = Path("/app/output")
+    input_dir = Path("input/pdfs")
+    output_dir = Path("output")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     for file in input_dir.glob("*.pdf"):
         result = extract_headings(file)
@@ -75,4 +77,6 @@ def process_all():
 
 
 if __name__ == "__main__":
+    print("Starting PDF processing...")
     process_all()
+    print("Done")
