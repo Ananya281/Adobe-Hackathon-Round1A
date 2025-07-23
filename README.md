@@ -58,11 +58,13 @@ For each `.pdf` file inside the `sample_dataset/pdfs/` folder, the app:
 docker build --platform linux/amd64 -t adobe-hackathon-round1a:v1 .
 ```
 
+### ✅ Step 2: Run the Docker Image
+
 ```bash
 docker run --rm -it \
   --platform linux/amd64 \
   -v "$(pwd)/sample_dataset/pdfs:/app/input/pdfs:ro" \
-  -v "$(pwd)/output:/app/output" \
+  -v "$(pwd)/sample_dataset/output:/app/output" \
   --network none \
   adobe-hackathon-round1a:v1
 ```
