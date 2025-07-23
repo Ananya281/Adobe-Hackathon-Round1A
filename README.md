@@ -26,18 +26,24 @@ A lightweight Python-Docker utility that extracts **headings/outline structure**
 
 ## 📁 Folder Structure
 
+```
+.
+├── sample_dataset/
+| ├── output/
+|   |── file01.json
+|   |── file01.json
+|   └── ...
+| ├── pdfs/
+│   ├── file01.pdf
+│   ├── file02.pdf
+│   └── ...
+| ├── schema/
+|   └── output_schema.json
+├── .gitignore
 ├── Dockerfile
 ├── process_pdfs.py
-├── sample_dataset/
-│ └── pdfs/
-│ ├── file01.pdf
-│ ├── file02.pdf
-│ └── ...
-├── output/
-│ └── file01.json
-│ └── file02.json
 └── README.md
-
+```
 
 ---
 
