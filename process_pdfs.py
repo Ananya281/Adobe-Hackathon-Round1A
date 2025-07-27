@@ -1,100 +1,191 @@
 import os
 import re
 import json
-import fitz  # PyMuPDF
+import numpy as np
+from difflib import SequenceMatcher
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTTextContainer, LTChar
+from sklearn.cluster import KMeans
 
-INPUT_DIR = "/app/input/pdfs"
-OUTPUT_DIR = "/app/output"
+# ----------- Title Extraction -----------
 
-def extract_title(doc):
-    """Extracts the visually largest text from the first page."""
-    page = doc[0]
-    blocks = page.get_text("dict")["blocks"]
-    title_candidate = ""
-    max_font_size = 0
+def extract_title(pdf_path):
+    title_candidates = []
 
-    for block in blocks:
-        for line in block.get("lines", []):
-            for span in line.get("spans", []):
-                text = span.get("text", "").strip()
-                if len(text) > 10 and span["size"] > max_font_size:
-                    max_font_size = span["size"]
-                    title_candidate = text
+    for page_layout in extract_pages(pdf_path):
+        for element in page_layout:
+            if isinstance(element, LTTextContainer):
+                for text_line in element:
+                    line_text = text_line.get_text().strip()
+                    if not line_text or len(line_text) < 3:
+                        continue
 
-    return title_candidate
+                    font_sizes = []
+                    font_names = []
 
-def extract_outline_from_toc(doc):
-    """Extract structured outline only from the Table of Contents page."""
-    outlines = []
-    toc_page = None
+                    for char in text_line:
+                        if isinstance(char, LTChar):
+                            font_sizes.append(char.size)
+                            font_names.append(char.fontname)
 
-    # Step 1: Locate the TOC page
-    for i in range(min(6, len(doc))):
-        text = doc[i].get_text()
-        if "Table of Contents" in text:
-            toc_page = doc[i]
-            break
+                    if not font_sizes:
+                        continue
 
-    if toc_page is None:
-        return outlines  # TOC not found
+                    avg_size = sum(font_sizes) / len(font_sizes)
+                    is_bold = any("Bold" in fn or "bold" in fn for fn in font_names)
 
-    # Step 2: Use block extraction to get clean lines
-    lines = []
-    blocks = toc_page.get_text("blocks")
-    for b in blocks:
-        line = b[4].strip()
-        if len(line) > 0:
-            lines.append(line)
+                    if text_line.y1 > page_layout.height * 0.75 and avg_size > 10:
+                        score = avg_size + (5 if is_bold else 0)
+                        title_candidates.append({
+                            "text": line_text,
+                            "score": score,
+                            "font_size": avg_size,
+                            "y_pos": text_line.y1
+                        })
+        break  # only first page
 
-    # Step 3: Parse lines that match section headings
-    for line in lines:
-        # Match numbered headings like "2.1 Something ... 6"
-        match = re.match(r"(?:(\d+(?:\.\d+)*))\s+(.+?)\s+(\d{1,3})$", line)
-        if match:
-            section = match.group(1)
-            heading = match.group(2).strip()
-            page = int(match.group(3))
-            level = "H2" if "." in section else "H1"
-            outlines.append({
+    if not title_candidates:
+        return None, None
+
+    title_candidates.sort(key=lambda x: (-x['score'], -x['y_pos']))
+    best = title_candidates[0]
+    best_title = re.sub(r'\s+', ' ', best['text']).strip()
+    return best_title, 1
+
+# ----------- Heading Extraction -----------
+
+def clean_text(text):
+    return re.sub(r'\s+', ' ', text).strip()
+
+def is_heading_candidate(text):
+    if len(text) < 3 or len(text) > 100:
+        return False
+    if text[-1] in ".!?":
+        return False
+    if text.lower() in ['the', 'a', 'an', 'and', 'for', 'we', 'our', 'in this']:
+        return False
+    if len(text.split()) > 12:
+        return False
+    return True
+
+def is_similar(a, b):
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio() > 0.85
+
+def remove_duplicates(headings, title_text=None, title_page=None):
+    seen = set()
+    filtered = []
+    for h in headings:
+        if title_text and title_page:
+            if h['page'] == title_page and is_similar(h['text'], title_text):
+                continue
+
+        key = (h['text'].lower(), h['level'])
+        if key not in seen:
+            filtered.append(h)
+            seen.add(key)
+    return filtered
+
+def extract_headings_accurate(pdf_path, title_text=None, title_page=None):
+    line_items = []
+    font_sizes = []
+
+    for page_num, layout in enumerate(extract_pages(pdf_path)):
+        for element in layout:
+            if not isinstance(element, LTTextContainer):
+                continue
+            for line in element:
+                if not hasattr(line, 'get_text'):
+                    continue
+
+                text = clean_text(line.get_text())
+                if not is_heading_candidate(text):
+                    continue
+
+                chars = [c for c in line if isinstance(c, LTChar)]
+                if not chars:
+                    continue
+
+                avg_size = sum(c.size for c in chars) / len(chars)
+                font_sizes.append(avg_size)
+
+                bold = any('Bold' in c.fontname or 'bold' in c.fontname for c in chars)
+                caps_ratio = sum(1 for ch in text if ch.isupper()) / len(text)
+                position_y = line.y1
+
+                line_items.append({
+                    'text': text,
+                    'size': avg_size,
+                    'bold': bold,
+                    'caps_ratio': caps_ratio,
+                    'y': position_y,
+                    'page': page_num + 1
+                })
+
+    if not font_sizes or not line_items:
+        return []
+
+    font_sizes_arr = np.array(font_sizes).reshape(-1, 1)
+    cluster_count = min(3, len(set(font_sizes)))
+    kmeans = KMeans(n_clusters=cluster_count, n_init=10)
+    kmeans.fit(font_sizes_arr)
+
+    font_to_cluster = {}
+    for size, label in zip(font_sizes, kmeans.labels_):
+        font_to_cluster[size] = label
+
+    cluster_centers = kmeans.cluster_centers_.flatten()
+    sorted_clusters = np.argsort(cluster_centers)[::-1]
+    cluster_to_level = {cluster: f"H{i+1}" for i, cluster in enumerate(sorted_clusters)}
+
+    results = []
+    for item in line_items:
+        cluster = font_to_cluster.get(item['size'])
+        if cluster is None:
+            continue
+        level = cluster_to_level.get(cluster, "H3")
+
+        score = 0
+        if item['bold']:
+            score += 1
+        if item['caps_ratio'] > 0.5:
+            score += 1
+        if item['y'] > 400:
+            score += 1
+        if len(item['text']) < 60:
+            score += 1
+
+        if score >= 3:
+            results.append({
                 "level": level,
-                "text": f"{section} {heading}",
-                "page": page
-            })
-            continue
-
-        # Match unnumbered headings like "Acknowledgements 4"
-        fallback = re.match(r"(.+?)\s+(\d{1,3})$", line)
-        if fallback:
-            heading = fallback.group(1).strip()
-            page = int(fallback.group(2))
-            outlines.append({
-                "level": "H1",
-                "text": heading,
-                "page": page
+                "text": item['text'],
+                "page": item['page']
             })
 
-    return outlines
+    return remove_duplicates(results, title_text, title_page)
 
-def process_pdf(pdf_path):
-    with fitz.open(pdf_path) as doc:
-        title = extract_title(doc)
-        outline = extract_outline_from_toc(doc)
-        return {
-            "title": title,
-            "outline": outline
-        }
+# ----------- Main Pipeline -----------
 
-def main():
-    for filename in os.listdir(INPUT_DIR):
-        if not filename.lower().endswith(".pdf"):
-            continue
-        pdf_path = os.path.join(INPUT_DIR, filename)
-        result = process_pdf(pdf_path)
+def analyze_pdf(pdf_path):
+    title_text, title_page = extract_title(pdf_path)
+    headings = extract_headings_accurate(pdf_path, title_text, title_page)
+    return {
+        "title": title_text,
+        "outline": headings
+    }
 
-        json_filename = os.path.splitext(filename)[0] + ".json"
-        output_path = os.path.join(OUTPUT_DIR, json_filename)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=4, ensure_ascii=False)
+def process_all_pdfs(input_folder, output_folder):
+    os.makedirs(output_folder, exist_ok=True)
+    for filename in os.listdir(input_folder):
+        if filename.lower().endswith(".pdf"):
+            pdf_path = os.path.join(input_folder, filename)
+            print(f"Processing: {filename}")
+            result = analyze_pdf(pdf_path)
+            output_path = os.path.join(output_folder, filename.replace(".pdf", ".json"))
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            print(f"Saved: {output_path}")
+
+# ----------- Entry Point -----------
 
 if __name__ == "__main__":
-    main()
+    process_all_pdfs("/app/input", "/app/output")
