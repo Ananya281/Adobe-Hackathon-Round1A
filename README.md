@@ -64,9 +64,9 @@ docker build --platform linux/amd64 -t adobe-hackathon-round1a:latest .
 
 ```bash
 docker run --rm \
-  -v "$(pwd)/sample_dataset/pdfs:/app/input:ro" \    # 📥 Input PDFs
-  -v "$(pwd)/sample_dataset/outputs:/app/output" \   # 📤 Output JSONs
-  --network none \                                   # 🔒 Network: Disabled for offline, secure execution
+  -v "$(pwd)/sample_dataset/pdfs:/app/input:ro" \
+  -v "$(pwd)/sample_dataset/outputs:/app/output" \
+  --network none \
   adobe-hackathon-round1a:latest
 ```
 
