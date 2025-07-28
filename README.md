@@ -69,7 +69,7 @@ docker run --rm \
   --network none \
   adobe-hackathon-round1a:latest
 ```
-Note for Windows users (Git Bash):
+Note: for Windows users (Git Bash):
 If you're running the Docker command on Windows using Git Bash or MSYS2, please add `winpty` before `docker run` to avoid TTY-related issues.
 
 ## 📦 Output Format
