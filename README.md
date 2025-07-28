@@ -1,34 +1,37 @@
-# 📄 Adobe Hackathon Round1A – PDF Heading Extractor
+# 📄 Adobe Hackathon Round 1A – PDF Heading Extractor
 
-A lightweight, Dockerized Python solution for extracting structured **title and headings (outline)** from PDFs. Built to meet all constraints and evaluation criteria for **Adobe Hackathon Round 1A**.
+A lightweight, containerized Python solution to extract **document titles** and **structured headings** (H1, H2, H3...) from PDF files. Designed to fulfill all constraints and evaluation metrics for **Adobe Hackathon Round 1A**.
 
 ---
 
-## 🚀 Features
+## ✨ Features
 
-- 📂 Automatically processes all PDFs
-- 🧠 Extracts document **title** and **outline structure** (H1, H2, H3...) from PDF content
-- 💾 Generates JSON outputs in `/app/output`, matching the required schema
-- 🐳 Fully containerized with Docker (`linux/amd64` compatible)
-- 🛡️ Works **offline**, **no internet** or GPU required
+- 📁 **Batch Processing**: Automatically processes all PDFs from the input folder
+- 🧠 **Smart Extraction**: Uses layout analysis & clustering to extract titles and heading structures
+- 💡 **Outline Detection**: Generates hierarchical headings (H1, H2, H3...) in clean JSON format
+- 💾 **Output Ready**: Saves structured JSONs in the specified output directory
+- 🐳 **Dockerized**: Easy to build and run with Docker (`linux/amd64` compatible)
+- 🛡️ **Offline Execution**: No internet or GPU required
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Component     | Technology         |
-|---------------|--------------------|
-| Language      | Python 3.10         |
-| PDF Parsing   | `pdfminer.six`      |
-| Clustering    | `scikit-learn` (KMeans) |
-| Array Ops     | `numpy`             |
-| Container     | Docker              |
-| Architecture  | `linux/amd64` (x86_64) |
+| 🔧 Component     | 🚀 Technology         |
+|------------------|------------------------|
+| Language         | Python 3.10            |
+| PDF Parsing      | `pdfminer.six`         |
+| Clustering       | `scikit-learn (KMeans)`|
+| Numerical Ops    | `NumPy`                |
+| Containerization | Docker                 |
+| Architecture     | `linux/amd64 (x86_64)` |
 
 ---
 
-## 📁 Folder Structure
+## 📁 Project Structure
 
+
+```
 Challenge_1a/
 ├── Dockerfile            #Docker configuration
 ├── process_pdfs.py       #Main processing script
@@ -41,20 +44,54 @@ Challenge_1a/
 │ │ └── sample.json
 │ └── schema/
 │ └── output_schema.json  #JSON output schema
+```
 
+---
 
-## Run the Solution with Docker
+## 🚀 How to Run with Docker
 
-Step 1: Build the Docker Image
+`
+Make sure Docker is installed and running.
+`
 
-`docker build --platform linux/amd64 -t adobe-hackathon-round1a:latest .`
+#### ▶️ Step 1: Build the Docker Image
 
- Step 2: Run the Container
+```
+docker build --platform linux/amd64 -t adobe-hackathon-round1a:latest .
+```
 
- ```
- docker run --rm \
-   -v $(pwd)/sample_dataset/pdfs:/app/input:ro \
-   -v $(pwd)/sample_dataset/outputs:/app/output \
-   --network none \
-   adobe-hackathon-round1a:latest
- ```
+#### ▶️ Step 2: Run the Container
+
+```bash
+docker run --rm \
+  -v "$(pwd)/sample_dataset/pdfs:/app/input:ro" \    # 📥 Input PDFs
+  -v "$(pwd)/sample_dataset/outputs:/app/output" \   # 📤 Output JSONs
+  --network none \                                   # 🔒 Network: Disabled for offline, secure execution
+  adobe-hackathon-round1a:latest
+```
+
+## 📦 Output Format
+
+The output is a structured JSON following this format:
+
+```
+{
+  "title": "Document Title",
+  "headings": [
+    {
+      "text": "Section Heading",
+      "level": 1,
+      "page": 1
+    },
+    ...
+  ]
+}
+```
+
+Schema reference: `sample_dataset/schema/output_schema.json`
+
+## ✅ Compatibility
+
+- ✅ Platform: `linux/amd64`
+- ✅ Offline Mode: Yes
+- ❌ No GPU or internet required
