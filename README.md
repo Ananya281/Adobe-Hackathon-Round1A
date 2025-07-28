@@ -32,7 +32,7 @@ A lightweight, containerized Python solution to extract **document titles** and 
 
 
 ```
-Challenge_1a/
+Adobe-Hackathon-Round1A/
 ├── Dockerfile            #Docker configuration
 ├── process_pdfs.py       #Main processing script
 ├── requirements.txt      #Python dependencies
@@ -43,7 +43,7 @@ Challenge_1a/
 │ ├── outputs/            #Output JSONs
 │ │ └── sample.json
 │ └── schema/
-│ └── output_schema.json  #JSON output schema
+│   └── output_schema.json  #JSON output schema
 ```
 
 ---
